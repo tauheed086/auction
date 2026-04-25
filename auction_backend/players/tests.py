@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
-from .models import Auction, Player
+from .models import Auction, Player, Team
 
 
 def get_test_image_file(name="player.gif"):
@@ -24,6 +24,7 @@ class AuctionApiTests(APITestCase):
             is_staff=True,
         )
         self.admin_token = Token.objects.create(user=self.admin_user)
+        self.team = Team.objects.create(name="Mumbai Indians", purse_limit=1000)
 
     def authenticate_as_admin(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.admin_token.key}")
@@ -46,7 +47,7 @@ class AuctionApiTests(APITestCase):
         self.assertIn("id", response.data)
 
     def test_set_player_updates_current_player(self):
-        auction = Auction.objects.create(is_active=True)
+        auction = Auction.objects.create(is_active=True, team_purse_limit=1000)
         player = self.create_player("Rohit")
         self.authenticate_as_admin()
 
@@ -61,9 +62,26 @@ class AuctionApiTests(APITestCase):
         self.assertEqual(auction.current_player_id, player.id)
         self.assertEqual(response.data["current_player"]["id"], player.id)
 
+    def test_set_player_allows_preview_before_purse_is_set(self):
+        auction = Auction.objects.create(is_active=True, team_purse_limit=None)
+        player = self.create_player("Preview Player")
+        self.authenticate_as_admin()
+
+        response = self.client.post(
+            f"/api/auction/{auction.id}/set_player/",
+            {"player_id": player.id},
+            format="json",
+        )
+
+        auction.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(auction.current_player_id, player.id)
+
     def test_sell_player_marks_current_player_sold(self):
         player = self.create_player("Bumrah")
-        auction = Auction.objects.create(is_active=True, current_player=player)
+        auction = Auction.objects.create(
+            is_active=True, current_player=player, team_purse_limit=1000
+        )
         self.authenticate_as_admin()
 
         response = self.client.post(
@@ -80,7 +98,9 @@ class AuctionApiTests(APITestCase):
 
     def test_sell_player_requires_team_and_points(self):
         player = self.create_player("Shami")
-        auction = Auction.objects.create(is_active=True, current_player=player)
+        auction = Auction.objects.create(
+            is_active=True, current_player=player, team_purse_limit=1000
+        )
         self.authenticate_as_admin()
 
         response = self.client.post(
@@ -94,10 +114,12 @@ class AuctionApiTests(APITestCase):
     def test_skip_player_marks_current_player_skipped(self):
         player = self.create_player("Hardik")
         player.is_sold = True
-        player.sold_team = "CSK"
+        player.sold_team = "Mumbai Indians"
         player.sold_points = 700
         player.save(update_fields=["is_sold", "sold_team", "sold_points"])
-        auction = Auction.objects.create(is_active=True, current_player=player)
+        auction = Auction.objects.create(
+            is_active=True, current_player=player, team_purse_limit=1000
+        )
         self.authenticate_as_admin()
 
         response = self.client.post(f"/api/auction/{auction.id}/skip_player/")
@@ -132,3 +154,75 @@ class AuctionApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("token", response.data)
+
+    def test_sell_player_respects_team_purse_limit(self):
+        player = self.create_player("Gill")
+        auction = Auction.objects.create(
+            is_active=True, current_player=player, team_purse_limit=1000
+        )
+        self.authenticate_as_admin()
+
+        response = self.client.post(
+            f"/api/auction/{auction.id}/sell_player/",
+            {"sold_team": "Mumbai Indians", "sold_points": 1200},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Insufficient purse", response.data["detail"])
+
+    def test_set_initial_purse_applies_to_all_teams_once_before_start(self):
+        Team.objects.create(name="CSK", purse_limit=0)
+        self.authenticate_as_admin()
+
+        response = self.client.post(
+            "/api/teams/set_initial_purse/",
+            {"purse_limit": 1200},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            set(Team.objects.values_list("purse_limit", flat=True)),
+            {1200},
+        )
+
+        player = self.create_player("Kohli")
+        player.is_skipped = True
+        player.save(update_fields=["is_skipped"])
+
+        second_response = self.client.post(
+            "/api/teams/set_initial_purse/",
+            {"purse_limit": 1400},
+            format="json",
+        )
+        self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cannot be changed", second_response.data["detail"])
+
+    def test_team_expenses_include_players_spent_and_balance(self):
+        self.create_player("Rohit")
+        Player.objects.create(
+            name="Sky",
+            role="batsman",
+            image=get_test_image_file("sky.gif"),
+            is_sold=True,
+            sold_team="Mumbai Indians",
+            sold_points=300,
+        )
+        Player.objects.create(
+            name="Bumrah",
+            role="bowler",
+            image=get_test_image_file("bumrah.gif"),
+            is_sold=True,
+            sold_team="Mumbai Indians",
+            sold_points=250,
+        )
+
+        response = self.client.get("/api/teams/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], "Mumbai Indians")
+        self.assertEqual(response.data[0]["spent_points"], 550)
+        self.assertEqual(response.data[0]["balance_points"], 450)
+        self.assertEqual(response.data[0]["players_bought"], ["Sky", "Bumrah"])

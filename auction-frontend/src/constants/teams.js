@@ -4,7 +4,7 @@ export const TEAM_OPTIONS = [
   "RJ Boys",
   "Java packers",
   "Vishal 11",
-  "ShivShakti warriors",
+  "Swaransh 29",
   "Mulla Tigers",
   "pappu ke aatanki"
 ];

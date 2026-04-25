@@ -6,6 +6,7 @@ from rest_framework.routers import DefaultRouter
 from players.views import (
     AuctionViewSet,
     PlayerViewSet,
+    TeamViewSet,
     CurrentAuctionView,
     AdminLoginView,
     AdminMeView,
@@ -14,6 +15,7 @@ from players.views import (
 
 router = DefaultRouter()
 router.register(r'players', PlayerViewSet)
+router.register(r'teams', TeamViewSet)
 router.register(r'auction', AuctionViewSet)
 urlpatterns = [
     path('api/', include(router.urls)),

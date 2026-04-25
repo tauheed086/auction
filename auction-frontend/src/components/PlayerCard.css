@@ -101,6 +101,23 @@
   margin-top: clamp(0px, 4vw, 48px);
 }
 
+.viewer-page .card-featured .card-details {
+  background: linear-gradient(
+    165deg,
+    rgba(248, 252, 255, 0.74) 0%,
+    rgba(232, 242, 255, 0.46) 100%
+  );
+  border-color: rgba(218, 233, 252, 0.72);
+  backdrop-filter: blur(7px);
+  box-shadow:
+    0 14px 28px rgba(9, 28, 52, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.viewer-page .card-featured .card-details::before {
+  background: linear-gradient(180deg, #58a6ff, #8fd0ff);
+}
+
 .card-featured .card-details::before {
   content: "";
   position: absolute;

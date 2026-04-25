@@ -8,13 +8,17 @@ import {
   createPlayer,
   getCurrentAuction,
   getPlayers,
+  getTeams,
   hasAdminToken,
+  setInitialTeamPurse,
   sellCurrentPlayer,
   setAdminToken,
   setAuctionPlayer,
+  syncTeams,
   skipCurrentPlayer,
 } from "../api";
 import PlayerCard from "../components/PlayerCard";
+import LeagueBrand from "../components/LeagueBrand";
 import { TEAM_OPTIONS } from "../constants/teams";
 
 function getRoleLabel(role) {
@@ -28,6 +32,7 @@ function getRoleLabel(role) {
 
 function AdminDashboard() {
   const [players, setPlayers] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [auction, setAuction] = useState(null);
   const [confetti, setConfetti] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
@@ -47,17 +52,29 @@ function AdminDashboard() {
     soldPoints: "",
   });
   const [sellError, setSellError] = useState("");
+  const [teamError, setTeamError] = useState("");
+  const [initialPurseInput, setInitialPurseInput] = useState("");
+  const [isSettingPurse, setIsSettingPurse] = useState(false);
+  const [playerSelectionError, setPlayerSelectionError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const confettiTimerRef = useRef(null);
 
   const fetchData = async () => {
     try {
-      const [playersRes, auctionRes] = await Promise.all([
+      const [playersRes, auctionRes, teamsRes] = await Promise.all([
         getPlayers(),
         getCurrentAuction(),
+        getTeams(),
       ]);
       setPlayers(playersRes.data);
       setAuction(auctionRes.data);
+      setTeams(teamsRes.data);
+      setInitialPurseInput(
+        auctionRes.data?.team_purse_limit === null ||
+          auctionRes.data?.team_purse_limit === undefined
+          ? ""
+          : String(auctionRes.data.team_purse_limit)
+      );
     } catch (error) {
       console.error("Failed to fetch admin data", error);
     }
@@ -93,7 +110,17 @@ function AdminDashboard() {
     if (!isAuthenticated) {
       return;
     }
-    fetchData();
+
+    const bootstrapData = async () => {
+      try {
+        await syncTeams(TEAM_OPTIONS);
+      } catch (error) {
+        console.error("Failed to sync teams", error);
+      }
+      await fetchData();
+    };
+
+    bootstrapData();
   }, [isAuthenticated]);
 
   const triggerConfetti = () => {
@@ -146,8 +173,12 @@ function AdminDashboard() {
       setIsAuthenticated(false);
       setAuthUser("");
       setPlayers([]);
+      setTeams([]);
       setAuction(null);
       setSellError("");
+      setTeamError("");
+      setPlayerSelectionError("");
+      setInitialPurseInput("");
     }
   };
 
@@ -185,10 +216,14 @@ function AdminDashboard() {
     }
 
     try {
+      setPlayerSelectionError("");
       await setAuctionPlayer(auction.id, playerId);
       await fetchData();
     } catch (error) {
       console.error("Failed to set auction player", error);
+      setPlayerSelectionError(
+        error?.response?.data?.detail || "Failed to select player."
+      );
     }
   };
 
@@ -199,6 +234,10 @@ function AdminDashboard() {
 
     if (!sellForm.soldTeam) {
       setSellError("Select the team before selling the player.");
+      return;
+    }
+    if (!teams.find((team) => team.name === sellForm.soldTeam)) {
+      setSellError("Selected team is not configured. Set team purse first.");
       return;
     }
 
@@ -234,6 +273,27 @@ function AdminDashboard() {
       await fetchData();
     } catch (error) {
       console.error("Failed to skip player", error);
+    }
+  };
+
+  const handleSetInitialPurse = async () => {
+    const purse = Number(initialPurseInput);
+    if (!Number.isFinite(purse) || purse <= 0 || !Number.isInteger(purse)) {
+      setTeamError("Initial purse must be a whole number greater than 0.");
+      return;
+    }
+
+    setIsSettingPurse(true);
+    try {
+      setTeamError("");
+      await setInitialTeamPurse(purse);
+      await fetchData();
+    } catch (error) {
+      setTeamError(
+        error?.response?.data?.detail || "Failed to set initial purse."
+      );
+    } finally {
+      setIsSettingPurse(false);
     }
   };
 
@@ -372,7 +432,7 @@ function AdminDashboard() {
         </button>
       </div>
 
-      <h1>Admin Auction Panel</h1>
+      <LeagueBrand />
 
       <section className="panel">
         <h2>Add Player</h2>
@@ -401,6 +461,35 @@ function AdminDashboard() {
           </button>
         </form>
       </section>
+
+      {auction?.team_purse_limit == null && (
+        <section className="panel">
+          <h2>Initial Team Purse</h2>
+          <p>
+            Set one purse amount for all teams before starting auction. After first
+            player selection, purse is locked.
+          </p>
+          <div className="control-row">
+            <input
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Enter purse amount"
+              value={initialPurseInput}
+              onChange={(event) => setInitialPurseInput(event.target.value)}
+              disabled={Boolean(auction?.is_purse_locked)}
+            />
+            <button
+              type="button"
+              onClick={handleSetInitialPurse}
+              disabled={Boolean(auction?.is_purse_locked) || isSettingPurse}
+            >
+              {isSettingPurse ? "Setting..." : "Start Auction"}
+            </button>
+          </div>
+          {teamError && <p className="sell-error">{teamError}</p>}
+        </section>
+      )}
 
       <section className="panel">
         <h2>Current Auction Player</h2>
@@ -442,9 +531,9 @@ function AdminDashboard() {
                   }
                 >
                   <option value="">Select Team</option>
-                  {TEAM_OPTIONS.map((team) => (
-                    <option key={team} value={team}>
-                      {team}
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.name}>
+                      {team.name} ({team.balance_points ?? 0} left)
                     </option>
                   ))}
                 </select>
@@ -463,13 +552,64 @@ function AdminDashboard() {
                 Skip
               </button>
             </div>
+            {teams.length === 0 && (
+              <p className="sell-error">
+                No team configured. Sync teams and set initial purse first.
+              </p>
+            )}
             {sellError && <p className="sell-error">{sellError}</p>}
           </>
         )}
       </section>
 
       <section className="panel">
+        <details className="expense-dropdown">
+          <summary className="expense-summary">
+            Team Expense List ({teams.length})
+          </summary>
+
+          <div className="expense-content">
+            {teams.length === 0 && (
+              <p className="empty-state">
+                No teams found. Refresh page to sync default teams.
+              </p>
+            )}
+
+            {teams.length > 0 && (
+              <div className="table-wrap">
+                <table className="player-table">
+                  <thead>
+                    <tr>
+                      <th>Team Name</th>
+                      <th>Players Bought</th>
+                      <th>Point Spend</th>
+                      <th>Point Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teams.map((team) => (
+                      <tr key={team.id}>
+                        <td>{team.name}</td>
+                        <td>
+                          {team.players_bought?.length
+                            ? team.players_bought.join(", ")
+                            : "-"}
+                        </td>
+                        <td>{team.spent_points ?? 0}</td>
+                        <td>{team.balance_points ?? 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </details>
+      </section>
+
+      <section className="panel">
         <h2>Select Player</h2>
+        {playerSelectionError && <p className="sell-error">{playerSelectionError}</p>}
         {players.length === 0 && (
           <p className="empty-state">No players added yet.</p>
         )}

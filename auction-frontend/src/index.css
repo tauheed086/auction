@@ -19,6 +19,12 @@ body {
     linear-gradient(180deg, #edf1f8 0%, #e7edf7 100%);
 }
 
+body.viewer-body {
+  background:
+    linear-gradient(150deg, rgba(6, 18, 35, 0.58), rgba(9, 28, 55, 0.42)),
+    var(--viewer-bg-image) center center / cover fixed no-repeat;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -58,10 +64,80 @@ h1 {
   color: #0d2d5a;
 }
 
+.league-brand {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2vw, 18px);
+  padding: 0;
+  margin: 0 0 18px;
+}
+
+.league-logo {
+  width: clamp(56px, 8vw, 82px);
+  height: clamp(56px, 8vw, 82px);
+  object-fit: contain;
+  border-radius: 0;
+}
+
+.league-name {
+  margin: 0;
+  font-family: "Bebas Neue", "Montserrat", sans-serif;
+  font-size: clamp(1.7rem, 4.5vw, 2.5rem);
+  line-height: 1;
+  color: #0d2d5a;
+  letter-spacing: 0.8px;
+}
+
 h2 {
   margin: 0 0 14px;
   font-size: clamp(1.2rem, 3.4vw, 1.45rem);
   color: #14365d;
+}
+
+.viewer-tabs {
+  display: inline-flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  background: #f4f7fe;
+  border: 1px solid #d8e2f1;
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.viewer-tab {
+  background: transparent;
+  color: #32507a;
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+
+.viewer-tab.is-active {
+  background: #124cc2;
+  color: #fff;
+}
+
+.viewer-page .league-name {
+  color: #f6fbff;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+
+.viewer-page .top-links a {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.viewer-page .viewer-tabs {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(198, 216, 245, 0.58);
+  backdrop-filter: blur(6px);
+}
+
+.viewer-page .viewer-tab {
+  color: #eaf3ff;
+}
+
+.viewer-page .viewer-tab.is-active {
+  background: rgba(16, 77, 194, 0.9);
+  color: #fff;
 }
 
 .panel {
@@ -70,6 +146,42 @@ h2 {
   border-radius: 16px;
   padding: clamp(12px, 2.5vw, 18px);
   margin-bottom: 18px;
+}
+
+.viewer-page .panel {
+  background: rgba(248, 252, 255, 0.2);
+  border-color: rgba(214, 228, 248, 0.55);
+  backdrop-filter: blur(7px);
+}
+
+.expense-dropdown {
+  width: 100%;
+}
+
+.expense-summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #14365d;
+  list-style: none;
+}
+
+.expense-summary::-webkit-details-marker {
+  display: none;
+}
+
+.expense-summary::after {
+  content: "▼";
+  float: right;
+  font-size: 0.8rem;
+  color: #4b668c;
+}
+
+.expense-dropdown[open] .expense-summary::after {
+  content: "▲";
+}
+
+.expense-content {
+  margin-top: 12px;
 }
 
 .viewer-card-wrap {
@@ -298,6 +410,16 @@ select {
   .top-links {
     justify-content: center;
     flex-wrap: wrap;
+  }
+
+  .viewer-tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .viewer-tab {
+    flex: 1;
+    text-align: center;
   }
 
   .sell-controls {

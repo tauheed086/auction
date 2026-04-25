@@ -36,6 +36,10 @@ export const createPlayer = (formData) =>
   API.post("players/", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+export const getTeams = () => API.get("teams/");
+export const syncTeams = (teams) => API.post("teams/sync/", { teams });
+export const setInitialTeamPurse = (purseLimit) =>
+  API.post("teams/set_initial_purse/", { purse_limit: purseLimit });
 
 export const getCurrentAuction = () => axios.get(`${API_BASE}/current-auction/`);
 
