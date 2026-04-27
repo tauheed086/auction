@@ -172,6 +172,29 @@ h2 {
   padding: 6px;
 }
 
+.viewer-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.viewer-tabs-row .viewer-tabs {
+  margin: 0;
+}
+
+.viewer-admin-link {
+  text-decoration: none;
+  color: #124cc2;
+  font-weight: 700;
+  border: 1px solid #c9d7f7;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff;
+  white-space: nowrap;
+}
+
 .viewer-tab {
   background: transparent;
   color: #32507a;
@@ -197,6 +220,10 @@ h2 {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(198, 216, 245, 0.58);
   backdrop-filter: blur(6px);
+}
+
+.viewer-page .viewer-admin-link {
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .viewer-page .viewer-tab {
@@ -529,6 +556,15 @@ select {
   .viewer-tabs {
     display: flex;
     width: 100%;
+  }
+
+  .viewer-tabs-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewer-admin-link {
+    text-align: center;
   }
 
   .viewer-tab {

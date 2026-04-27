@@ -103,25 +103,30 @@ function App() {
 
       <LeagueBrand />
 
-      <div className="viewer-tabs" role="tablist" aria-label="Viewer sections">
-        <button
-          type="button"
-          className={`viewer-tab ${activeTab === "auction" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("auction")}
-          role="tab"
-          aria-selected={activeTab === "auction"}
-        >
-          Auction View
-        </button>
-        <button
-          type="button"
-          className={`viewer-tab ${activeTab === "list" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("list")}
-          role="tab"
-          aria-selected={activeTab === "list"}
-        >
-          Player List
-        </button>
+      <div className="viewer-tabs-row">
+        <div className="viewer-tabs" role="tablist" aria-label="Viewer sections">
+          <button
+            type="button"
+            className={`viewer-tab ${activeTab === "auction" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("auction")}
+            role="tab"
+            aria-selected={activeTab === "auction"}
+          >
+            Auction View
+          </button>
+          <button
+            type="button"
+            className={`viewer-tab ${activeTab === "list" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("list")}
+            role="tab"
+            aria-selected={activeTab === "list"}
+          >
+            Player List
+          </button>
+        </div>
+        <a href="/admin-board" className="viewer-admin-link">
+          Admin Panel
+        </a>
       </div>
 
       {activeTab === "auction" && (
