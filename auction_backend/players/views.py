@@ -1,6 +1,9 @@
 from django.contrib.auth import authenticate
+from django.conf import settings
+from django.db import transaction
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
+import secrets
 from rest_framework import permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -135,6 +138,60 @@ class AuctionViewSet(viewsets.ModelViewSet):
     queryset = Auction.objects.all()
     serializer_class = AuctionSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @action(
+        detail=False,
+        methods=["post"],
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def reset(self, request):
+        if not request.user.is_staff:
+            return Response(
+                {"detail": "Staff access required for auction reset."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        pin = str(request.data.get("pin", "")).strip()
+        expected_pin = str(getattr(settings, "AUCTION_RESET_PIN", "")).strip()
+
+        if not expected_pin:
+            return Response(
+                {"detail": "Reset PIN is not configured."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        if not pin:
+            return Response({"detail": "pin is required."}, status=400)
+
+        if not secrets.compare_digest(pin, expected_pin):
+            return Response({"detail": "Invalid reset PIN."}, status=403)
+
+        with transaction.atomic():
+            auction = get_or_create_auction()
+            auction.current_player = None
+            auction.team_purse_limit = None
+            auction.is_purse_locked = False
+            auction.save(
+                update_fields=["current_player", "team_purse_limit", "is_purse_locked"]
+            )
+
+            teams_reset = Team.objects.update(purse_limit=0)
+            players_reset = Player.objects.update(
+                is_sold=False,
+                is_skipped=False,
+                sold_team="",
+                sold_points=None,
+            )
+
+        serializer = AuctionSerializer(auction, context={"request": request})
+        return Response(
+            {
+                "detail": "Auction has been reset successfully.",
+                "auction": serializer.data,
+                "teams_reset": teams_reset,
+                "players_reset": players_reset,
+            }
+        )
 
     @action(
         detail=True,

@@ -42,6 +42,74 @@ body.viewer-body {
   margin-bottom: 18px;
 }
 
+.admin-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.top-links-inline {
+  margin-bottom: 0;
+}
+
+.reset-anchor {
+  position: relative;
+}
+
+.reset-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  padding: 0;
+  border: 1px solid #8f1127;
+  background: #b61a35;
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.reset-icon-btn:hover:not(:disabled) {
+  background: #cb1f41;
+}
+
+.reset-popover {
+  position: absolute;
+  top: 50px;
+  left: 0;
+  width: min(300px, calc(100vw - 44px));
+  background: #fff;
+  border: 1px solid #d8e2f1;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(20, 54, 93, 0.16);
+  padding: 12px;
+  z-index: 20;
+}
+
+.reset-popover h3 {
+  margin: 0 0 8px;
+  color: #14365d;
+  font-size: 1rem;
+}
+
+.reset-popover-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.reset-popover-actions button {
+  flex: 1;
+}
+
+.reset-popover .sell-error {
+  text-align: left;
+}
+
 .top-links a {
   text-decoration: none;
   color: #124cc2;
@@ -217,6 +285,20 @@ h2 {
   font-weight: 700;
 }
 
+.success-message {
+  margin: 8px 0 0;
+  color: #16683a;
+  text-align: center;
+  font-weight: 700;
+}
+
+.edit-hint {
+  margin: 10px 0 0;
+  text-align: center;
+  color: #21446f;
+  font-weight: 600;
+}
+
 .auth-panel {
   max-width: 520px;
   margin: 0 auto;
@@ -272,6 +354,14 @@ button.secondary {
   background: #875d20;
 }
 
+button.danger-btn {
+  background: #b61a35;
+}
+
+button.danger-btn:hover:not(:disabled) {
+  background: #c91f3e;
+}
+
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -325,7 +415,7 @@ select {
 .player-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 760px;
+  min-width: 840px;
 }
 
 .player-table th,
@@ -367,6 +457,11 @@ select {
   background: #f5f8fd;
 }
 
+.row-action-btn {
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+
 .row-badge {
   display: inline-block;
   margin-left: 10px;
@@ -405,6 +500,25 @@ select {
 @media (max-width: 760px) {
   .add-player-form {
     grid-template-columns: 1fr;
+  }
+
+  .admin-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .reset-anchor {
+    align-self: flex-start;
+  }
+
+  .top-links-inline {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .reset-popover {
+    width: min(300px, calc(100vw - 32px));
   }
 
   .top-links {

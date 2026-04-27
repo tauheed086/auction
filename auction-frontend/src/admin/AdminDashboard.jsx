@@ -11,6 +11,7 @@ import {
   getTeams,
   hasAdminToken,
   setInitialTeamPurse,
+  resetAuction,
   sellCurrentPlayer,
   setAdminToken,
   setAuctionPlayer,
@@ -57,6 +58,11 @@ function AdminDashboard() {
   const [isSettingPurse, setIsSettingPurse] = useState(false);
   const [playerSelectionError, setPlayerSelectionError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetPin, setResetPin] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
+  const [isResetPopoverOpen, setIsResetPopoverOpen] = useState(false);
   const confettiTimerRef = useRef(null);
 
   const fetchData = async () => {
@@ -179,6 +185,10 @@ function AdminDashboard() {
       setTeamError("");
       setPlayerSelectionError("");
       setInitialPurseInput("");
+      setResetPin("");
+      setResetError("");
+      setResetSuccess("");
+      setIsResetPopoverOpen(false);
     }
   };
 
@@ -225,6 +235,11 @@ function AdminDashboard() {
         error?.response?.data?.detail || "Failed to select player."
       );
     }
+  };
+
+  const handleEditPlayer = async (event, playerId) => {
+    event.stopPropagation();
+    await handleSetPlayer(playerId);
   };
 
   const handleSellPlayer = async () => {
@@ -294,6 +309,41 @@ function AdminDashboard() {
       );
     } finally {
       setIsSettingPurse(false);
+    }
+  };
+
+  const handleResetAuction = async () => {
+    const pin = resetPin.trim();
+    if (!pin) {
+      setResetError("Enter reset PIN to reset auction.");
+      setResetSuccess("");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Reset auction will clear sold/skipped status, sold team/points, current player, and team purse settings. Continue?"
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      setResetError("");
+      setResetSuccess("");
+      const response = await resetAuction({ pin });
+      setResetPin("");
+      setSellForm({ soldTeam: "", soldPoints: "" });
+      setResetSuccess(response.data?.detail || "Auction reset complete.");
+      setIsResetPopoverOpen(false);
+      await fetchData();
+    } catch (error) {
+      setResetError(
+        error?.response?.data?.detail || "Failed to reset auction."
+      );
+      setResetSuccess("");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -424,13 +474,67 @@ function AdminDashboard() {
     <div className="page">
       {confetti && <Confetti recycle={false} numberOfPieces={520} />}
 
-      <div className="top-links">
-        <a href="/">Viewer Board</a>
-        <a href="/admin-board">Admin Board</a>
-        <button type="button" className="secondary" onClick={handleLogout}>
-          Logout ({authUser})
-        </button>
+      <div className="admin-topbar">
+        <div className="reset-anchor">
+          <button
+            type="button"
+            className="reset-icon-btn"
+            aria-label="Reset auction"
+            title="Reset Auction"
+            onClick={() => {
+              setResetError("");
+              setResetSuccess("");
+              setIsResetPopoverOpen((prev) => !prev);
+            }}
+          >
+            &#10227;
+          </button>
+
+          {isResetPopoverOpen && (
+            <div className="reset-popover">
+              <h3>Reset Auction</h3>
+              <input
+                type="password"
+                placeholder="Enter reset PIN"
+                value={resetPin}
+                onChange={(event) => setResetPin(event.target.value)}
+              />
+              <div className="reset-popover-actions">
+                <button
+                  type="button"
+                  className="danger-btn"
+                  onClick={handleResetAuction}
+                  disabled={isResetting}
+                >
+                  {isResetting ? "Resetting..." : "Reset"}
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setIsResetPopoverOpen(false);
+                    setResetError("");
+                    setResetPin("");
+                  }}
+                  disabled={isResetting}
+                >
+                  Cancel
+                </button>
+              </div>
+              {resetError && <p className="sell-error">{resetError}</p>}
+            </div>
+          )}
+        </div>
+
+        <div className="top-links top-links-inline">
+          <a href="/">Viewer Board</a>
+          <a href="/admin-board">Admin Board</a>
+          <button type="button" className="secondary" onClick={handleLogout}>
+            Logout ({authUser})
+          </button>
+        </div>
       </div>
+      {resetSuccess && <p className="success-message">{resetSuccess}</p>}
 
       <LeagueBrand />
 
@@ -546,12 +650,20 @@ function AdminDashboard() {
                     setSellForm((prev) => ({ ...prev, soldPoints: event.target.value }))
                   }
                 />
-                <button onClick={handleSellPlayer}>Sell</button>
+                <button onClick={handleSellPlayer}>
+                  {currentPlayer.is_sold ? "Save Edit" : "Sell"}
+                </button>
               </div>
               <button className="secondary" onClick={handleSkipPlayer}>
                 Skip
               </button>
             </div>
+            {currentPlayer.is_sold && (
+              <p className="edit-hint">
+                Edit mode is active for this sold player. Update team and points,
+                then click Save Edit.
+              </p>
+            )}
             {teams.length === 0 && (
               <p className="sell-error">
                 No team configured. Sync teams and set initial purse first.
@@ -647,6 +759,7 @@ function AdminDashboard() {
                       <th>Status</th>
                       <th>Team</th>
                       <th>Points</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -686,6 +799,15 @@ function AdminDashboard() {
                           </td>
                           <td>{player.sold_team || "-"}</td>
                           <td>{player.sold_points ?? "-"}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="row-action-btn"
+                              onClick={(event) => handleEditPlayer(event, player.id)}
+                            >
+                              Edit
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}

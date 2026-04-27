@@ -136,3 +136,6 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
 }
+
+# Hardcoded PIN used for admin auction reset endpoint.
+AUCTION_RESET_PIN = '2254'

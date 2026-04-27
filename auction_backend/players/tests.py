@@ -1,5 +1,6 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
@@ -226,3 +227,85 @@ class AuctionApiTests(APITestCase):
         self.assertEqual(response.data[0]["spent_points"], 550)
         self.assertEqual(response.data[0]["balance_points"], 450)
         self.assertEqual(response.data[0]["players_bought"], ["Sky", "Bumrah"])
+
+    @override_settings(AUCTION_RESET_PIN="7777")
+    def test_reset_auction_requires_valid_pin(self):
+        player = self.create_player("Reset Test")
+        player.is_sold = True
+        player.sold_team = "Mumbai Indians"
+        player.sold_points = 300
+        player.save(update_fields=["is_sold", "sold_team", "sold_points"])
+
+        auction = Auction.objects.create(
+            is_active=True,
+            current_player=player,
+            team_purse_limit=1000,
+            is_purse_locked=True,
+        )
+        Team.objects.filter(id=self.team.id).update(purse_limit=1000)
+        self.authenticate_as_admin()
+
+        response = self.client.post(
+            "/api/auction/reset/",
+            {"pin": "0000"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data["detail"], "Invalid reset PIN.")
+
+        auction.refresh_from_db()
+        player.refresh_from_db()
+        self.assertEqual(auction.current_player_id, player.id)
+        self.assertEqual(auction.team_purse_limit, 1000)
+        self.assertTrue(auction.is_purse_locked)
+        self.assertTrue(player.is_sold)
+
+    @override_settings(AUCTION_RESET_PIN="7777")
+    def test_reset_auction_clears_state_for_all_items(self):
+        player = self.create_player("Sky")
+        player.is_sold = True
+        player.sold_team = "Mumbai Indians"
+        player.sold_points = 250
+        player.save(update_fields=["is_sold", "sold_team", "sold_points"])
+        skipped_player = self.create_player("Rohit")
+        skipped_player.is_skipped = True
+        skipped_player.save(update_fields=["is_skipped"])
+
+        auction = Auction.objects.create(
+            is_active=True,
+            current_player=player,
+            team_purse_limit=1000,
+            is_purse_locked=True,
+        )
+        Team.objects.filter(id=self.team.id).update(purse_limit=1000)
+        self.authenticate_as_admin()
+
+        response = self.client.post(
+            "/api/auction/reset/",
+            {"pin": "7777"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["detail"], "Auction has been reset successfully.")
+
+        auction.refresh_from_db()
+        player.refresh_from_db()
+        skipped_player.refresh_from_db()
+        self.team.refresh_from_db()
+
+        self.assertIsNone(auction.current_player_id)
+        self.assertIsNone(auction.team_purse_limit)
+        self.assertFalse(auction.is_purse_locked)
+        self.assertEqual(self.team.purse_limit, 0)
+
+        self.assertFalse(player.is_sold)
+        self.assertFalse(player.is_skipped)
+        self.assertEqual(player.sold_team, "")
+        self.assertIsNone(player.sold_points)
+
+        self.assertFalse(skipped_player.is_sold)
+        self.assertFalse(skipped_player.is_skipped)
+        self.assertEqual(skipped_player.sold_team, "")
+        self.assertIsNone(skipped_player.sold_points)

@@ -51,6 +51,7 @@ export const sellCurrentPlayer = (auctionId, payload) =>
 
 export const skipCurrentPlayer = (auctionId) =>
   API.post(`auction/${auctionId}/skip_player/`);
+export const resetAuction = (payload) => API.post("auction/reset/", payload);
 
 export const resolveImageUrl = (player) => {
   if (!player) {
