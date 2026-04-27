@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const rawApiBase = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const rawApiBase =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.PROD ? window.location.origin : "http://127.0.0.1:8000");
 const API_BASE = rawApiBase.endsWith("/") ? rawApiBase.slice(0, -1) : rawApiBase;
 const ADMIN_TOKEN_KEY = "auction_admin_token";
 const API = axios.create({

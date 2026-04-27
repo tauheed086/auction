@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentAuction, getPlayers } from "./api";
 import PlayerCard from "./components/PlayerCard";
 import LeagueBrand from "./components/LeagueBrand";
@@ -33,13 +33,13 @@ function App() {
   const previousStatusRef = useRef({ playerId: null, isSold: false });
   const confettiTimerRef = useRef(null);
 
-  const triggerConfetti = () => {
+  const triggerConfetti = useCallback(() => {
     setConfetti(true);
     clearTimeout(confettiTimerRef.current);
     confettiTimerRef.current = setTimeout(() => setConfetti(false), 5000);
-  };
+  }, []);
 
-  const fetchViewerData = async () => {
+  const fetchViewerData = useCallback(async () => {
     try {
       const [auctionRes, playersRes] = await Promise.all([
         getCurrentAuction(),
@@ -69,17 +69,22 @@ function App() {
     } catch (error) {
       console.error("Failed to fetch viewer data", error);
     }
-  };
+  }, [triggerConfetti]);
 
   useEffect(() => {
-    fetchViewerData();
-    const intervalId = setInterval(fetchViewerData, 2000);
+    const initialLoadTimeoutId = setTimeout(() => {
+      void fetchViewerData();
+    }, 0);
+    const intervalId = setInterval(() => {
+      void fetchViewerData();
+    }, 2000);
 
     return () => {
+      clearTimeout(initialLoadTimeoutId);
       clearInterval(intervalId);
       clearTimeout(confettiTimerRef.current);
     };
-  }, []);
+  }, [fetchViewerData]);
 
   useEffect(() => {
     document.body.classList.add("viewer-body");

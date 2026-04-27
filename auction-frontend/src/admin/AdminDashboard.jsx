@@ -31,6 +31,20 @@ function getRoleLabel(role) {
   return labels[role] || role;
 }
 
+function getSellFormFromPlayer(player) {
+  if (!player) {
+    return { soldTeam: "", soldPoints: "" };
+  }
+
+  return {
+    soldTeam: player.sold_team || "",
+    soldPoints:
+      player.sold_points === null || player.sold_points === undefined
+        ? ""
+        : String(player.sold_points),
+  };
+}
+
 function AdminDashboard() {
   const [players, setPlayers] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -72,15 +86,18 @@ function AdminDashboard() {
         getCurrentAuction(),
         getTeams(),
       ]);
+      const nextAuction = auctionRes.data;
       setPlayers(playersRes.data);
-      setAuction(auctionRes.data);
+      setAuction(nextAuction);
       setTeams(teamsRes.data);
       setInitialPurseInput(
-        auctionRes.data?.team_purse_limit === null ||
-          auctionRes.data?.team_purse_limit === undefined
+        nextAuction?.team_purse_limit === null ||
+          nextAuction?.team_purse_limit === undefined
           ? ""
-          : String(auctionRes.data.team_purse_limit)
+          : String(nextAuction.team_purse_limit)
       );
+      setSellForm(getSellFormFromPlayer(nextAuction?.current_player || null));
+      setSellError("");
     } catch (error) {
       console.error("Failed to fetch admin data", error);
     }
@@ -393,30 +410,6 @@ function AdminDashboard() {
 
     await handleSetPlayer(navigablePlayers[targetIndex].id);
   };
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    if (!currentPlayer) {
-      setSellForm({ soldTeam: "", soldPoints: "" });
-      return;
-    }
-
-    setSellForm({
-      soldTeam: currentPlayer.sold_team || "",
-      soldPoints:
-        currentPlayer.sold_points === null || currentPlayer.sold_points === undefined
-          ? ""
-          : String(currentPlayer.sold_points),
-    });
-    setSellError("");
-  }, [
-    isAuthenticated,
-    currentPlayer?.id,
-    currentPlayer?.sold_team,
-    currentPlayer?.sold_points,
-  ]);
 
   if (isAuthChecking) {
     return (

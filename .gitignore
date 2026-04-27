@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Django local/state files
+auction_backend/db.sqlite3
+auction_backend/staticfiles/
+auction_backend/media/
+
+# Frontend
+auction-frontend/node_modules/
+auction-frontend/dist/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

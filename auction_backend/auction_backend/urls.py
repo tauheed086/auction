@@ -26,5 +26,5 @@ urlpatterns = [
     path('current-auction/', CurrentAuctionView.as_view())
 ]
 
-if settings.DEBUG:
+if settings.DEBUG or getattr(settings, "SERVE_MEDIA_FILES", False):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
